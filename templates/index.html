@@ -1,453 +1,174 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-<meta charset="utf-8">
-<meta name="viewport" content="width=device-width, initial-scale=1">
-<title>mapcanvas</title>
-<style>
-  :root {
-    --bg: oklch(14% 0.012 265);
-    --surface: oklch(18% 0.014 265);
-    --surface-2: oklch(23% 0.016 265);
-    --fg: oklch(94% 0.008 95);
-    --muted: oklch(64% 0.014 265);
-    --dim: oklch(46% 0.014 265);
-    --line: oklch(27% 0.016 265);
-    --accent: oklch(79% 0.13 85);
-    --accent-up: oklch(84% 0.14 85);
-    --accent-ink: oklch(22% 0.05 85);
-    --err: oklch(72% 0.14 25);
-    --r-sm: 0.5rem;
-    --r: 0.75rem;
-    --r-full: 9999px;
-    --ease: cubic-bezier(0.22, 1, 0.36, 1);
-    --dur: 220ms;
-    --font: "Segoe UI", system-ui, sans-serif;
-    --font-display: "Palatino Linotype", Palatino, Georgia, serif;
-    --font-mono: ui-monospace, "Cascadia Mono", Consolas, monospace;
-  }
-  * { box-sizing: border-box; margin: 0; padding: 0; }
-  html, body { height: 100%; }
-  body {
-    background: var(--bg); color: var(--fg); font: 14px/1.5 var(--font);
-    display: flex; flex-direction: column; overflow: hidden;
-  }
-  header {
-    flex: none; display: flex; align-items: baseline; gap: 16px;
-    padding: 15px 24px; border-bottom: 1px solid var(--line);
-  }
-  header h1 {
-    font: italic 700 23px/1 var(--font-display); letter-spacing: 0.02em;
-  }
-  header h1 em { color: var(--accent); font-style: normal; }
-  header .tag { color: var(--muted); font-size: 12.5px; letter-spacing: 0.04em; }
-  header .by {
-    margin-left: auto; color: var(--dim); font-size: 11.5px;
-    letter-spacing: 0.14em; text-transform: uppercase;
-  }
-  main { flex: 1; display: flex; min-height: 0; }
-
-  aside {
-    width: 344px; flex: none; overflow-y: auto; background: var(--surface);
-    border-right: 1px solid var(--line); padding: 22px 22px 30px;
-  }
-  .field { margin-bottom: 24px; }
-  .field > label, .group {
-    display: flex; align-items: baseline; gap: 8px;
-    font-size: 10.5px; font-weight: 600; letter-spacing: 0.16em;
-    text-transform: uppercase; color: var(--muted); margin-bottom: 9px;
-  }
-  .group::after { content: ""; flex: 1; height: 1px; background: var(--line); }
-
-  input[type=text], select {
-    width: 100%; background: var(--surface-2); color: var(--fg);
-    border: 1px solid var(--line); border-radius: var(--r-sm);
-    padding: 10px 12px; font: inherit; outline: none;
-    transition: border-color var(--dur) var(--ease), box-shadow var(--dur) var(--ease);
-  }
-  input[type=text]:focus, select:focus {
-    border-color: var(--accent);
-    box-shadow: 0 0 0 3px oklch(79% 0.13 85 / 0.18);
-  }
-  .row { display: flex; gap: 8px; }
-  .row input { flex: 1; }
-
-  button {
-    font: inherit; border: none; border-radius: var(--r-sm); cursor: pointer;
-    transition: transform 120ms var(--ease), background var(--dur) var(--ease),
-                border-color var(--dur) var(--ease), box-shadow var(--dur) var(--ease);
-  }
-  button:active { transform: scale(0.97); }
-  .dice {
-    background: var(--surface-2); border: 1px solid var(--line); color: var(--muted);
-    width: 41px; border-radius: var(--r-sm); font-size: 16px;
-  }
-  .dice:hover { color: var(--accent); border-color: var(--accent); }
-
-  .slider-row { display: flex; align-items: center; gap: 12px; }
-  input[type=range] {
-    flex: 1; appearance: none; height: 4px; border-radius: var(--r-full);
-    background: var(--surface-2); outline: none;
-  }
-  input[type=range]::-webkit-slider-thumb {
-    appearance: none; width: 16px; height: 16px; border-radius: 50%;
-    background: var(--accent); border: 3px solid var(--surface);
-    box-shadow: 0 0 0 1px var(--line); cursor: grab;
-    transition: transform 120ms var(--ease);
-  }
-  input[type=range]::-webkit-slider-thumb:hover { transform: scale(1.15); }
-  input[type=range]::-moz-range-thumb {
-    width: 10px; height: 10px; border-radius: 50%;
-    background: var(--accent); border: 3px solid var(--surface);
-    box-shadow: 0 0 0 1px var(--line); cursor: grab;
-  }
-  .slider-val {
-    font: 12px var(--font-mono); color: var(--accent); min-width: 56px; text-align: right;
-  }
-
-  .chips { display: flex; flex-wrap: wrap; gap: 8px; }
-  .chip {
-    display: inline-flex; align-items: center; gap: 8px;
-    background: var(--surface-2); border: 1px solid var(--line); color: var(--fg);
-    padding: 7px 13px 7px 10px; border-radius: var(--r-full); font-size: 12.5px;
-  }
-  .chip:hover { border-color: var(--dim); transform: translateY(-1px); }
-  .chip .dots { display: flex; gap: 3px; }
-  .chip .dots i { width: 8px; height: 8px; border-radius: 50%; }
-  .chip.active {
-    background: var(--accent); border-color: var(--accent);
-    color: var(--accent-ink); font-weight: 600;
-  }
-  .chip.active .dots i { box-shadow: 0 0 0 1px oklch(22% 0.05 85 / 0.35); }
-
-  .swatches { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
-  .swatch {
-    display: flex; align-items: center; gap: 10px;
-    background: var(--surface-2); border: 1px solid var(--line);
-    border-radius: var(--r-sm); padding: 7px 10px; cursor: pointer;
-    transition: border-color var(--dur) var(--ease);
-  }
-  .swatch:hover { border-color: var(--dim); }
-  .swatch span { font-size: 12px; color: var(--muted); }
-  input[type=color] {
-    width: 26px; height: 26px; border: none; padding: 0; background: none;
-    border-radius: 7px; cursor: pointer;
-  }
-  input[type=color]::-webkit-color-swatch-wrapper { padding: 0; }
-  input[type=color]::-webkit-color-swatch { border: 1px solid oklch(100% 0 0 / 0.2); border-radius: 7px; }
-  input[type=color]::-moz-color-swatch { border: 1px solid oklch(100% 0 0 / 0.2); border-radius: 7px; }
-
-  .segment {
-    display: flex; background: var(--surface-2);
-    border: 1px solid var(--line); border-radius: var(--r-sm); overflow: hidden;
-  }
-  .segment button {
-    flex: 1; background: none; color: var(--muted); padding: 9px; border-radius: 0;
-    font-size: 12.5px; letter-spacing: 0.03em;
-  }
-  .segment button.active { background: var(--accent); color: var(--accent-ink); font-weight: 600; }
-
-  .actions { display: flex; flex-direction: column; gap: 10px; }
-  .primary {
-    background: var(--accent); color: var(--accent-ink);
-    padding: 13px; border-radius: var(--r); font-weight: 700; font-size: 14.5px;
-    letter-spacing: 0.02em; box-shadow: 0 6px 24px oklch(79% 0.13 85 / 0.22);
-  }
-  .primary:hover { background: var(--accent-up); box-shadow: 0 8px 30px oklch(79% 0.13 85 / 0.3); }
-  .primary:disabled { filter: grayscale(0.7) brightness(0.7); cursor: wait; box-shadow: none; }
-  .ghost {
-    background: none; border: 1px solid var(--line); color: var(--fg);
-    padding: 11px; border-radius: var(--r);
-  }
-  .ghost:hover:not(:disabled) { border-color: var(--dim); }
-  .ghost:disabled { opacity: 0.35; cursor: not-allowed; }
-
-  section.stage {
-    flex: 1; position: relative; min-width: 0; padding: 34px;
-    display: flex; align-items: center; justify-content: center;
-    background-image: radial-gradient(var(--line) 1px, transparent 1px);
-    background-size: 24px 24px;
-  }
-  #map {
-    max-width: min(80vh, 100%); max-height: 100%; aspect-ratio: 1;
-    border-radius: 4px; box-shadow: 0 30px 90px oklch(0% 0 0 / 0.6), 0 2px 8px oklch(0% 0 0 / 0.4);
-    animation: settle 480ms var(--ease);
-  }
-  @keyframes settle {
-    from { opacity: 0; transform: scale(0.985) translateY(6px); }
-    to { opacity: 1; transform: none; }
-  }
-  .placeholder {
-    color: var(--dim); font: italic 17px/1.7 var(--font-display);
-    text-align: center; max-width: 360px;
-  }
-  .placeholder b { color: var(--muted); }
-
-  #overlay {
-    position: absolute; inset: 0; display: none;
-    align-items: center; justify-content: center; flex-direction: column; gap: 18px;
-    background: oklch(14% 0.012 265 / 0.6);
-    backdrop-filter: blur(6px) saturate(140%);
-    -webkit-backdrop-filter: blur(6px) saturate(140%);
-  }
-  #overlay.on { display: flex; }
-  .spinner {
-    width: 36px; height: 36px; border-radius: 50%;
-    border: 3px solid var(--line); border-top-color: var(--accent);
-    animation: spin 0.8s linear infinite;
-  }
-  @keyframes spin { to { transform: rotate(360deg); } }
-  #overlay p { color: var(--muted); font: italic 13.5px var(--font-display); }
-
-  footer {
-    flex: none; display: flex; justify-content: space-between; gap: 16px;
-    padding: 9px 24px; border-top: 1px solid var(--line);
-    color: var(--dim); font-size: 11.5px;
-  }
-  footer a { color: var(--dim); }
-  footer a:hover { color: var(--muted); }
-
-  #toast {
-    position: fixed; left: 50%; bottom: 54px; transform: translateX(-50%) translateY(16px);
-    background: oklch(24% 0.06 25 / 0.9); color: var(--err);
-    border: 1px solid oklch(72% 0.14 25 / 0.5); border-radius: var(--r);
-    padding: 11px 20px; max-width: 70vw; opacity: 0; pointer-events: none;
-    backdrop-filter: blur(8px);
-    transition: opacity var(--dur) var(--ease), transform var(--dur) var(--ease);
-  }
-  #toast.on { opacity: 1; transform: translateX(-50%) translateY(0); }
-
-  @media (prefers-reduced-motion: reduce) {
-    *, *::before, *::after { animation-duration: 0.01ms !important; transition-duration: 0.01ms !important; }
-  }
-</style>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="theme-color" content="#f4f4f1">
+  <title>Mapcanvas — map poster editor</title>
+  <link rel="stylesheet" href="{{ url_for('static', filename='app.css') }}">
+  <script defer src="{{ url_for('static', filename='app.js') }}"></script>
 </head>
 <body>
+  <a class="skip-link" href="#preview">Skip to poster preview</a>
 
-<header>
-  <h1>map<em>canvas</em></h1>
-  <span class="tag">generative poster maps from OpenStreetMap</span>
-  <span class="by">made with love by Auric</span>
-</header>
+  <header class="site-header">
+    <div class="brand-lockup">
+      <h1 class="brand">Map<em>canvas</em></h1>
+      <span class="tagline">Map poster editor</span>
+    </div>
+    <div class="maker">
+      <span>OpenStreetMap data</span>
+      <strong>Auric</strong>
+    </div>
+  </header>
 
-<main>
-  <aside>
-    <div class="field">
-      <label for="place">Place</label>
-      <div class="row">
-        <input type="text" id="place" value="Berlin, Germany" spellcheck="false" autocomplete="off">
-        <button class="dice" id="surprise" title="Surprise me">&#10022;</button>
+  <main>
+    <aside class="controls" aria-label="Poster settings">
+      <form id="controlsForm">
+        <div class="panel-intro">
+          <h2>Create a map poster</h2>
+          <p class="lede">Configure a location, visual style and print output.</p>
+        </div>
+
+        <section class="settings-section" aria-labelledby="locationHeading">
+          <h3 class="section-title" id="locationHeading">
+            <span class="section-number" aria-hidden="true">01</span>
+            Location
+          </h3>
+          <div class="field">
+            <label for="place">City, district or landmark</label>
+            <div class="input-row">
+              <input type="text" id="place" value="Berlin, Germany" spellcheck="false" autocomplete="off" aria-describedby="placeHint">
+              <button type="button" class="surprise" id="surprise" aria-label="Choose a random place and render its map" disabled>Random</button>
+            </div>
+            <span class="hint" id="placeHint">Search uses OpenStreetMap place data.</span>
+          </div>
+        </section>
+
+        <section class="settings-section" aria-labelledby="areaHeading">
+          <h3 class="section-title" id="areaHeading">
+            <span class="section-number" aria-hidden="true">02</span>
+            Map area
+          </h3>
+          <div class="field">
+            <label for="radius">Radius around location</label>
+            <div class="slider-row">
+              <input type="range" id="radius" min="250" max="10000" step="250" value="2000" aria-describedby="radiusVal">
+              <output class="slider-value" id="radiusVal" for="radius">2 km</output>
+            </div>
+          </div>
+        </section>
+
+        <section class="settings-section" aria-labelledby="styleHeading">
+          <h3 class="section-title" id="styleHeading">
+            <span class="section-number" aria-hidden="true">03</span>
+            Style
+          </h3>
+          <fieldset class="control-group">
+            <legend class="visually-hidden">Color theme</legend>
+            <div class="chips" id="presets"></div>
+          </fieldset>
+        </section>
+
+        <div class="actions">
+          <button type="submit" class="primary" id="generate" disabled>Loading styles…</button>
+        </div>
+
+        <details class="advanced" id="advanced" open>
+          <summary>04&nbsp;&nbsp;Output details <small>colors, shape and size</small></summary>
+          <div class="advanced-body">
+            <h3 class="section-title advanced-heading">
+              <span class="section-number" aria-hidden="true">04</span>
+              Output details
+            </h3>
+
+            <fieldset class="control-group settings-section">
+              <legend>Layer colors</legend>
+              <div class="swatches">
+                <label class="swatch"><input type="color" data-key="bg"><span>Background</span></label>
+                <label class="swatch"><input type="color" data-key="water"><span>Water</span></label>
+                <label class="swatch"><input type="color" data-key="green"><span>Parks</span></label>
+                <label class="swatch"><input type="color" data-key="building"><span>Buildings</span></label>
+                <label class="swatch"><input type="color" data-key="road"><span>Roads</span></label>
+                <label class="swatch"><input type="color" data-key="accent"><span>Outline</span></label>
+              </div>
+            </fieldset>
+
+            <div class="field">
+              <label for="roadw">Road weight</label>
+              <div class="slider-row">
+                <input type="range" id="roadw" min="0.5" max="2" step="0.1" value="1" aria-describedby="roadwVal">
+                <output class="slider-value" id="roadwVal" for="roadw">1.0×</output>
+              </div>
+            </div>
+
+            <fieldset class="control-group settings-section">
+              <legend>Poster shape</legend>
+              <div class="segmented" role="group" aria-label="Poster shape">
+                <button type="button" id="shapeCircle" aria-pressed="true"><span class="shape-mark" aria-hidden="true"></span>Round</button>
+                <button type="button" id="shapeSquare" aria-pressed="false"><span class="shape-mark" aria-hidden="true"></span>Square</button>
+              </div>
+            </fieldset>
+
+            <div class="field">
+              <label for="size">Output size</label>
+              <select id="size">
+                <option value="1200">1200 × 1200 px</option>
+                <option value="2000" selected>2000 × 2000 px</option>
+                <option value="3000">3000 × 3000 px</option>
+              </select>
+            </div>
+          </div>
+        </details>
+      </form>
+    </aside>
+
+    <section class="stage" id="preview" aria-label="Poster preview" aria-busy="false" tabindex="-1">
+      <div class="stage-meta">
+        <span class="stage-meta-primary" id="stageLabel">Preview</span>
+        <span class="stage-spec" id="stageSpec">2000 px · round</span>
+        <div class="preview-actions">
+          <span class="preview-zoom" aria-hidden="true">Fit</span>
+          <button type="button" class="secondary" id="save" disabled>Download PNG</button>
+        </div>
       </div>
-    </div>
 
-    <div class="field">
-      <label for="radius">Radius</label>
-      <div class="slider-row">
-        <input type="range" id="radius" min="250" max="10000" step="250" value="2000">
-        <span class="slider-val" id="radiusVal">2 km</span>
+      <div class="empty-state" id="placeholder">
+        <div class="empty-icon" aria-hidden="true">
+          <svg viewBox="0 0 40 40" fill="none">
+            <path d="M7.5 9.5 15 6l10 4.5L32.5 7v23.5L25 34l-10-4.5L7.5 33V9.5Z" stroke-width="1.5" stroke-linejoin="round"/>
+            <path d="M15 6v23.5M25 10.5V34M11 15l4-2 5 2.5 5-2 4 2" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/>
+          </svg>
+        </div>
+        <h2>Poster preview</h2>
+        <p>Choose a location and render a poster to inspect the final composition.</p>
+        <button type="button" class="text-action" id="focusPlace">Set location</button>
       </div>
-    </div>
 
-    <div class="field">
-      <span class="group">Preset</span>
-      <div class="chips" id="presets"></div>
-    </div>
-
-    <div class="field">
-      <span class="group">Layer colors</span>
-      <div class="swatches">
-        <label class="swatch"><input type="color" data-key="bg"><span>background</span></label>
-        <label class="swatch"><input type="color" data-key="water"><span>water</span></label>
-        <label class="swatch"><input type="color" data-key="green"><span>parks</span></label>
-        <label class="swatch"><input type="color" data-key="building"><span>buildings</span></label>
-        <label class="swatch"><input type="color" data-key="road"><span>roads</span></label>
-        <label class="swatch"><input type="color" data-key="accent"><span>ink &amp; ring</span></label>
+      <div class="error-state" id="stageError" aria-atomic="true" hidden>
+        <div class="error-symbol" aria-hidden="true">!</div>
+        <h2>Poster unavailable</h2>
+        <p id="stageErrorMessage">Check the place name or your connection, then try again.</p>
+        <button type="button" class="text-action" id="retry">Try again</button>
       </div>
-    </div>
 
-    <div class="field">
-      <label for="roadw">Road weight</label>
-      <div class="slider-row">
-        <input type="range" id="roadw" min="0.5" max="2" step="0.1" value="1">
-        <span class="slider-val" id="roadwVal">1.0&times;</span>
+      <img id="map" hidden alt="Generated map poster">
+
+      <div id="overlay" aria-hidden="true">
+        <div class="loading-state">
+          <div class="spinner" aria-hidden="true"></div>
+          <strong>Rendering poster</strong>
+          <p id="overlayMsg">Loading map data…</p>
+        </div>
       </div>
-    </div>
+    </section>
+  </main>
 
-    <div class="field">
-      <span class="group">Shape</span>
-      <div class="segment">
-        <button id="shapeCircle" class="active">&#9679;&ensp;medallion</button>
-        <button id="shapeSquare">&#9632;&ensp;square</button>
-      </div>
-    </div>
+  <footer class="site-footer">
+    <span id="status" role="status" aria-live="polite" aria-atomic="true">Loading style library…</span>
+    <span>Map data © <a href="https://www.openstreetmap.org/copyright" target="_blank" rel="noopener noreferrer">OpenStreetMap contributors</a></span>
+  </footer>
 
-    <div class="field">
-      <label for="size">Output size</label>
-      <select id="size">
-        <option value="1200">1200 &times; 1200</option>
-        <option value="2000" selected>2000 &times; 2000</option>
-        <option value="3000">3000 &times; 3000</option>
-      </select>
-    </div>
-
-    <div class="actions">
-      <button class="primary" id="generate">Generate map</button>
-      <button class="ghost" id="save" disabled>Save PNG</button>
-    </div>
-  </aside>
-
-  <section class="stage">
-    <div class="placeholder" id="placeholder">Type a place, pick a mood,<br>then press <b>Generate map</b>.</div>
-    <img id="map" hidden alt="Generated map poster">
-    <div id="overlay"><div class="spinner"></div><p id="overlayMsg">Fetching streets from OpenStreetMap&hellip;</p></div>
-  </section>
-</main>
-
-<footer>
-  <span id="status">Ready.</span>
-  <span>Map data &copy; <a href="https://www.openstreetmap.org/copyright" target="_blank" rel="noopener">OpenStreetMap</a> contributors &middot; made with love by Auric</span>
-</footer>
-
-<div id="toast"></div>
-
-<script>
-const $ = id => document.getElementById(id);
-const PLACE_POOL = ["Venice, Italy","Amsterdam, Netherlands","Manhattan, New York","Tokyo, Japan",
-  "Paris, France","Marrakesh, Morocco","Suzhou, China","Hamburg, Germany","Copenhagen, Denmark",
-  "Bruges, Belgium","Stockholm, Sweden","Lisbon, Portugal","Fez, Morocco","Prague, Czechia"];
-const LOADING_MSGS = ["Fetching streets from OpenStreetMap\u2026","Tracing the rivers\u2026",
-  "Counting the buildings\u2026","Inking the roads\u2026","Composing the poster\u2026"];
-
-let PRESETS = {}, preset = "gallery", circle = true, blobUrl = null, msgTimer = null;
-
-const fmtRadius = m => m >= 1000 ? (m / 1000).toString().replace(/\.0$/, "") + " km" : m + " m";
-const first = v => Array.isArray(v) ? v[0] : v;
-
-function setSwatches(style) {
-  document.querySelectorAll("input[type=color]").forEach(el => {
-    if (style[el.dataset.key]) el.value = first(style[el.dataset.key]);
-  });
-}
-
-function currentStyle() {
-  const s = {};
-  document.querySelectorAll("input[type=color]").forEach(el => s[el.dataset.key] = el.value);
-  return s;
-}
-
-function toast(msg) {
-  const t = $("toast");
-  t.textContent = msg;
-  t.classList.add("on");
-  setTimeout(() => t.classList.remove("on"), 5000);
-}
-
-function busy(on) {
-  $("overlay").classList.toggle("on", on);
-  $("generate").disabled = on;
-  clearInterval(msgTimer);
-  if (on) {
-    let i = 0;
-    $("overlayMsg").textContent = LOADING_MSGS[0];
-    msgTimer = setInterval(() => {
-      i = (i + 1) % LOADING_MSGS.length;
-      $("overlayMsg").textContent = LOADING_MSGS[i];
-    }, 3500);
-  }
-}
-
-async function generate() {
-  busy(true);
-  const t0 = performance.now();
-  try {
-    const res = await fetch("/api/render", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({
-        place: $("place").value.trim(),
-        dist: +$("radius").value,
-        preset,
-        style: currentStyle(),
-        size: +$("size").value,
-        circle,
-        width_scale: +$("roadw").value,
-      }),
-    });
-    if (!res.ok) {
-      let msg = "Render failed.";
-      try { msg = (await res.json()).error || msg; } catch {}
-      throw new Error(msg);
-    }
-    const blob = await res.blob();
-    if (blobUrl) URL.revokeObjectURL(blobUrl);
-    blobUrl = URL.createObjectURL(blob);
-    const img = $("map");
-    img.style.animation = "none";
-    void img.offsetWidth;
-    img.style.animation = "";
-    img.src = blobUrl;
-    img.hidden = false;
-    $("placeholder").style.display = "none";
-    $("save").disabled = false;
-    $("status").textContent = "Rendered in " + ((performance.now() - t0) / 1000).toFixed(1) + " s";
-  } catch (e) {
-    toast(e.message);
-    $("status").textContent = "Error.";
-  } finally {
-    busy(false);
-  }
-}
-
-async function init() {
-  PRESETS = await (await fetch("/api/presets")).json();
-  const box = $("presets");
-  Object.entries(PRESETS).forEach(([name, style]) => {
-    const b = document.createElement("button");
-    b.className = "chip" + (name === preset ? " active" : "");
-    const dots = document.createElement("span");
-    dots.className = "dots";
-    ["bg", "water", "road", "accent"].forEach(key => {
-      const i = document.createElement("i");
-      i.style.background = first(style[key]);
-      dots.appendChild(i);
-    });
-    b.appendChild(dots);
-    b.appendChild(document.createTextNode(name));
-    b.onclick = () => {
-      preset = name;
-      box.querySelectorAll(".chip").forEach(c => c.classList.toggle("active", c === b));
-      setSwatches(style);
-    };
-    box.appendChild(b);
-  });
-  setSwatches(PRESETS[preset]);
-
-  $("radius").oninput = e => $("radiusVal").textContent = fmtRadius(+e.target.value);
-  $("roadw").oninput = e => $("roadwVal").innerHTML = (+e.target.value).toFixed(1) + "&times;";
-  $("place").addEventListener("keydown", e => { if (e.key === "Enter") generate(); });
-  $("generate").onclick = generate;
-  $("surprise").onclick = () => {
-    $("place").value = PLACE_POOL[Math.floor(Math.random() * PLACE_POOL.length)];
-    generate();
-  };
-  $("shapeCircle").onclick = () => {
-    circle = true;
-    $("shapeCircle").classList.add("active");
-    $("shapeSquare").classList.remove("active");
-  };
-  $("shapeSquare").onclick = () => {
-    circle = false;
-    $("shapeSquare").classList.add("active");
-    $("shapeCircle").classList.remove("active");
-  };
-  $("save").onclick = () => {
-    const a = document.createElement("a");
-    a.href = blobUrl;
-    a.download = ($("place").value.trim().replace(/\W+/g, "-").toLowerCase() || "map") + "-mapcanvas.png";
-    a.click();
-  };
-}
-init();
-</script>
+  <div id="toast" role="alert" aria-live="assertive" aria-atomic="true" hidden></div>
 </body>
 </html>
