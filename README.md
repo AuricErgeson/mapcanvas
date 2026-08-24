@@ -11,10 +11,10 @@ street plan of the place you typed in.
 
 ## Running it
 
-You need Python with `osmnx`, `geopandas`, `flask` and `pillow`
-installed. Then:
+Install the pinned Python dependencies, then start the server:
 
 ```
+py -m pip install -r requirements.txt
 py app.py
 ```
 
@@ -27,13 +27,13 @@ colors and shapes is basically instant.
 ## A quick tour
 
 1. Type a place, say `Lisbon, Portugal`, and pick a radius.
-2. Hit **Generate map**.
+2. Hit **Render poster**.
 3. Try the presets: `gallery`, `noir`, `blueprint`, `sakura`, `cobalt`.
 4. Tweak single layers with the color pickers, make roads thicker or
    thinner, switch between the round medallion and the square poster.
-5. **Save PNG** when you like what you see.
+5. **Download PNG** when you like what you see.
 
-The small star button next to the place field picks a random city,
+The **Random** button next to the place field picks a random city,
 which is fun when you just want to look around.
 
 If you don't care about the web page, the drawing part works on its own:
@@ -54,8 +54,20 @@ sure the drawing code still works after changes.
 your circle: roads, buildings, water, green areas. It then projects
 that onto a flat pixel canvas and paints the layers one over the other,
 water first, roads last, with a caption and coordinates at the bottom.
-`app.py` is a tiny Flask server around it, and `templates/index.html`
-is the whole front end in one file.
+`app.py` is a tiny Flask server around it. The front end is split into
+`templates/index.html`, `static/app.css` and `static/app.js`.
+
+## Checks
+
+GitHub Actions runs the same offline checks for every pull request and
+every push to `main`. You can run them locally without downloading map data:
+
+```
+py -m compileall -q app.py mapart.py test_render.py test_web.py
+node --check static/app.js
+py -m unittest -v test_web
+py test_render.py
+```
 
 ## Collaborating
 
