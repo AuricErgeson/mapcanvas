@@ -63,45 +63,15 @@ PRESETS = {
         "casing": "#F6F3EC",
         "accent": "#C23B2A",
     },
-    "noir": {
-        "backdrop": "#0B0B0E",
-        "bg": "#121217",
-        "water": "#16222E",
-        "green": "#141D17",
-        "building": "#24242D",
-        "road": "#EDE8DD",
-        "casing": "#121217",
-        "accent": "#D9A441",
-    },
-    "blueprint": {
-        "backdrop": "#08203A",
-        "bg": "#0C2C4E",
-        "water": "#071B31",
-        "green": "#15486C",
-        "building": "#24598B",
-        "road": "#E9F2F9",
-        "casing": "#0C2C4E",
-        "accent": "#E9F2F9",
-    },
-    "sakura": {
-        "backdrop": "#F6E7EB",
-        "bg": "#FBEFF2",
-        "water": "#A3CBD9",
-        "green": "#D3E4CE",
-        "building": "#F0CBD5",
-        "road": "#FFFFFF",
-        "casing": "#DA96A9",
-        "accent": "#5D3A45",
-    },
-    "cobalt": {
-        "backdrop": "#EDE9DF",
-        "bg": "#F6F3EC",
-        "water": "#2450C0",
-        "green": "#C2D4AC",
-        "building": "#DFD8C9",
-        "road": "#191712",
-        "casing": "#F6F3EC",
-        "accent": "#C23B2A",
+    "terracotta": {
+        "backdrop": "#E8DED0",
+        "bg": "#F3EAD9",
+        "water": "#7FA8A3",
+        "green": "#CFD6B4",
+        "building": ["#D98B6A", "#C87A58", "#E0997A"],
+        "road": "#3A322C",
+        "casing": "#F3EAD9",
+        "accent": "#A23B23",
     },
 }
 
@@ -278,6 +248,10 @@ def render_scene(
     title="",
     subtitle="",
 ):
+    # Draw at twice the final size and scale down, so edges stay smooth.
+    out_size, ss = size, 2
+    size = out_size * ss
+
     feats = ox.projection.project_gdf(features) if len(features) else None
     crs = feats.crs if feats is not None else None
     roads = ox.projection.project_gdf(edges, to_crs=crs) if len(edges) else None
@@ -400,7 +374,10 @@ def render_scene(
     af = _font(["segoeui.ttf", "arial.ttf"], round(size * 0.014))
     _draw_tracked_centered(d, size / 2, ay, ATTRIBUTION, af, style["accent"], 0, halo)
 
-    noise = Image.effect_noise((size, size), 96).convert("L")
+    if ss != 1:
+        canvas = canvas.resize((out_size, out_size), Image.LANCZOS)
+
+    noise = Image.effect_noise((out_size, out_size), 96).convert("L")
     canvas = Image.blend(canvas, Image.merge("RGB", (noise, noise, noise)), 0.05)
 
     buf = io.BytesIO()

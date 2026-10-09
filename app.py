@@ -20,7 +20,7 @@ def presets():
 @app.post("/api/render")
 def api_render():
     d = request.get_json(force=True)
-    style = dict(mapart.PRESETS.get(d.get("preset", "minimal")))
+    style = dict(mapart.PRESETS.get(d.get("preset"), mapart.PRESETS["gallery"]))
     style.update(
         {k: v for k, v in (d.get("style") or {}).items() if isinstance(v, str)}
     )
